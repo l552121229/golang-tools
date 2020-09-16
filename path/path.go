@@ -1,6 +1,7 @@
 package path
 
 import (
+	"fmt"
 	"os"
 	"path"
 )
@@ -16,12 +17,13 @@ func Create(fileName string) (*(os.File), error) {
 			return nil, err
 		}
 		if os.IsNotExist(StatusErr) {
-			err = MkdirAll(path.Dir(fileName), 0666)
+			err = MkdirAll(path.Dir(fileName), 0766)
+			fmt.Println(err)
 			if err != nil {
 				return nil, err
 			}
 		}
-		return Create(fileName)
+		return os.Create(fileName)
 	}
 
 	return f, nil
@@ -34,11 +36,13 @@ func Mkdir(dir string, perm os.FileMode) error {
 
 // MkdirAll 创建文件夹 相当于os.MkdirAll()
 func MkdirAll(dir string, perm os.FileMode) error {
-	// os.MkdirAll(dir, perm)
 	fDir := path.Dir(dir)
-	// dir = path.Base(dir)
+
 	if fDir != "." && fDir != ".." && fDir != "/" {
-		MkdirAll(dir, perm)
+		err := MkdirAll(fDir, perm)
+		if err != nil {
+			return err
+		}
 	}
 	_, err := os.Stat(dir)
 	if err == nil {
@@ -46,6 +50,7 @@ func MkdirAll(dir string, perm os.FileMode) error {
 	}
 
 	if os.IsNotExist(err) {
+		fmt.Println(dir)
 		err = Mkdir(dir, perm)
 		if err != nil {
 			return err
