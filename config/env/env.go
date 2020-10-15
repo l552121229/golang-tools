@@ -1,8 +1,4 @@
-// Copyright 2016 The Hzwy23. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-package config
+package env
 
 import (
 	"errors"
@@ -13,35 +9,36 @@ import (
 	"sync"
 )
 
-// INIConfig Ini type configuration file
-type INIConfig struct {
+// Config env配置类型
+type Config struct {
 	val  map[string]string
 	lock *sync.RWMutex
 	file string
 }
 
 // key value pair
-type iniLineOne struct {
+type envLineOne struct {
 	line   string
 	index  int
 	offset int
 }
 
-func createINIConfig(path string) (*INIConfig, error) {
-	conf := &INIConfig{}
+// CreateConfig CreateConfig
+func CreateConfig(path string) (*Config, error) {
+	conf := &Config{}
 	conf.val = make(map[string]string)
 	conf.file = path
 	conf.lock = new(sync.RWMutex)
 
-	err := conf.getResource(path)
+	err := conf.GetResource(path)
 	if err != nil {
 		return nil, err
-	} else {
-		return conf, nil
 	}
+	return conf, nil
 }
 
-func (c *INIConfig) getResource(dir string) error {
+// GetResource GetResource
+func (c *Config) GetResource(dir string) error {
 	cont, err := ioutil.ReadFile(dir)
 
 	if err != nil {
@@ -54,7 +51,7 @@ func (c *INIConfig) getResource(dir string) error {
 	for _, val := range conf {
 		val = strings.TrimSpace(val)
 		val = strings.TrimRight(val, "\r")
-		a := c.trimSpace(val)
+		a := c.TrimSpace(val)
 		if len(a) > 0 && a[0] == '#' {
 			continue
 		}
@@ -66,7 +63,8 @@ func (c *INIConfig) getResource(dir string) error {
 	return nil
 }
 
-func (c *INIConfig) trimSpace(str string) string {
+// TrimSpace TrimSpace
+func (c *Config) TrimSpace(str string) string {
 	var rst []byte
 
 	by := []byte(str)
@@ -88,9 +86,9 @@ func (c *INIConfig) trimSpace(str string) string {
 	return string(rst)
 }
 
-// Modify the value of key in the configuration file.
+// Set Modify the value of key in the configuration file.
 // If the key does not exist, the key value pair will be added to the configuration file
-func (c *INIConfig) Set(key, value string) error {
+func (c *Config) Set(key, value string) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	if _, ok := c.val[key]; ok {
@@ -104,8 +102,8 @@ func (c *INIConfig) Set(key, value string) error {
 
 		rd := make([]byte, 1024)
 
-		var lines []iniLineOne
-		var tmp iniLineOne
+		var lines []envLineOne
+		var tmp envLineOne
 		var line []byte
 		var index = -1
 		var offset = 0
@@ -138,7 +136,7 @@ func (c *INIConfig) Set(key, value string) error {
 					}
 					if line[len(line)-1] == '\x0d' {
 						tmp.line = string(line[:len(line)-1])
-						tmp.offset -= 1
+						tmp.offset--
 					} else {
 						tmp.line = string(line)
 					}
@@ -154,7 +152,7 @@ func (c *INIConfig) Set(key, value string) error {
 		}
 
 		for _, val := range lines {
-			t1 := c.trimSpace(val.line)
+			t1 := c.TrimSpace(val.line)
 			mkey, _, _ := c.splitEqual(t1)
 
 			if mkey == key {
@@ -179,7 +177,7 @@ func (c *INIConfig) Set(key, value string) error {
 
 				if len(newValue) < val.offset {
 					if val.offset-len(newValue) > 1 {
-						var tb []byte = make([]byte, val.offset-len(newValue)-1)
+						var tb = make([]byte, val.offset-len(newValue)-1)
 						for i := 0; i < val.offset-len(newValue)-1; i++ {
 							tb[i] = '\x20'
 						}
@@ -200,43 +198,40 @@ func (c *INIConfig) Set(key, value string) error {
 			}
 		}
 		return nil
-	} else {
-		// add configuration variable values.
-		op := key + "=" + value + "\n"
-		fd, err := os.OpenFile(c.file, os.O_APPEND, 666)
-		if err != nil {
-			return err
-		}
-		defer fd.Close()
-		// 读取最后文本最后一个自己，如果不是换行符，则添加一个换行符
-		fd.Seek(-1, 2)
-		var b []byte = make([]byte, 1)
-		fd.Read(b)
-		if b[0] != '\n' {
-			op = "\n" + op
-		}
-		_, err = fd.WriteString(op)
+	}
+	// add configuration variable values.
+	op := key + "=" + value + "\n"
+	fd, err := os.OpenFile(c.file, os.O_APPEND, 666)
+	if err != nil {
 		return err
 	}
-	c.getResource(c.file)
-	return nil
+	defer fd.Close()
+	// 读取最后文本最后一个字符，如果不是换行符，则添加一个换行符
+	fd.Seek(-1, 2)
+	var b = make([]byte, 1)
+	fd.Read(b)
+	if b[0] != '\n' {
+		op = "\n" + op
+	}
+	_, err = fd.WriteString(op)
+	return err
 }
 
 // Get read key's value from the configuration file
 // if the key does not exist, return key's value is dirty data, error is not nil.
 // if the key exist, return the key's value, error is nil
-func (c *INIConfig) Get(key string) (string, error) {
+func (c *Config) Get(key string) (string, error) {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 
 	if val, ok := c.val[key]; ok {
 		return val, nil
-	} else {
-		return "", errors.New("The key [" + key + "] doesn't exist")
 	}
+
+	return "", errors.New("The key [" + key + "] doesn't exist")
 }
 
-func (c *INIConfig) splitEqual(str string) (string, string, error) {
+func (c *Config) splitEqual(str string) (string, string, error) {
 	if len(str) == 0 {
 		return "", "", errors.New("empty value")
 	}

@@ -1,6 +1,9 @@
 package config
 
 import (
+	"github.com/l552121229/golang-tools/config/env"
+	"github.com/l552121229/golang-tools/config/ini"
+
 	"errors"
 )
 
@@ -19,12 +22,18 @@ type Handle interface {
 	Set(key string, value string) error
 }
 
+// ConfType 配置类型
 type ConfType string
 
 const (
-	INI  ConfType = "INI"
+	// INI ini类型的配置文件
+	INI ConfType = "INI"
+	// YAML yaml类型的配置文件
 	YAML ConfType = "YAML"
+	// JSON json类型的配置文件
 	JSON ConfType = "JSON"
+	// ENV env类型的配置文件
+	ENV ConfType = "ENV"
 )
 
 // Load 加载配置文件，
@@ -34,21 +43,24 @@ const (
 //    YARM
 //    JSON
 //    INI
+//    ENV
 func Load(filePath string, typ ...ConfType) (Handle, error) {
 	if len(typ) == 0 {
-		return createINIConfig(filePath)
+		return ini.CreateConfig(filePath)
 	}
 	switch typ[0] {
 	case INI:
-		return createINIConfig(filePath)
+		return ini.CreateConfig(filePath)
 	case YAML:
 		// TODO
 		// YAML 配置文件读取方式
-		return createINIConfig(filePath)
+		return ini.CreateConfig(filePath)
 	case JSON:
 		// TODO
 		// JSON 类型配置文件读取方式
-		return createINIConfig(filePath)
+		return ini.CreateConfig(filePath)
+	case ENV:
+		return env.CreateConfig(filePath)
 	}
 
 	// 无效的配置文件类型

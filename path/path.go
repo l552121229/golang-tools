@@ -271,8 +271,3 @@ func MkdirAll(dir string, perm os.FileMode) error {
 	}
 	return nil
 }
-
-// TestGetPath TestGetPath
-func TestGetPath() (dir string, err error) {
-	return os.Getwd()
-}
