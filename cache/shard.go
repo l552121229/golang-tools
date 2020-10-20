@@ -130,6 +130,8 @@ func (s *Shard) CheckHoleProportion() float64 {
 func (s *Shard) CleanHole() bool {
 	// 写锁, 整理空穴期间禁止写入操作
 	s.lock.Lock()
+	defer s.lock.Unlock()
+
 	go s.getDataNoHole()
 	temp := make([]byte, defaultValue)
 	items := make(map[uint64]uint32, defaultValue)
@@ -139,12 +141,10 @@ func (s *Shard) CleanHole() bool {
 	}
 
 	s.lock.RLock() // 读锁, 转移数据期间禁止读取操作
+	defer s.lock.RUnlock()
 
 	s.items = items
 	copy(s.array, temp)
-
-	s.lock.RUnlock()
-	s.lock.Unlock()
 
 	return true
 }
